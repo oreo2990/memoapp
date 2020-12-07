@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>MemoPad for NIWA</title>
+<script src="js/jquery-2.1.3.min.js"></script>
+<link rel="stylesheet" href="css/sample.css">
+</head>
+<body>
+<header>
+<h1>MemoPad</h1>
+</header>
+<main>
+    <!-- ----------以下インプットエリア---------- -->
+    <!-- <input name=key type="text" id="key" placeholder="タイトル"></input>  これ変更前-->
+    <div class="inputarea">
+        <textarea name=key type="text" id="key" placeholder="タイトル"></textarea> 
+        <textarea id="memo" placeholder="メモ"></textarea>    
+        <ul>
+            <li id="save">Save(保存)</li>
+            <li id="clear">Clear(全消去)</li>
+        </ul>
+    </div>
+    <!-- ----------以上インプットエリア---------- -->
+
+    <!-- ----------以下一行デリートエリア---------- -->
+    <!-- <input name=delet_key id="delete_memo" placeholder="消去したいタイトル"> これ変更前-->
+    <div class="deletarea">
+        <textarea name=delet_key id="delete_memo" placeholder="消去したいタイトル"></textarea> 
+        <ul><li id="delete_button">delete(消去)</li></ul>
+    </div>
+    <!-- ----------以上一行デリートエリア---------- -->
+
+    <!-- ----------以下内容変更エリア---------- -->
+    <!-- <input name=key2 type="text" id="key2" placeholder="変更したいタイトル"> これ変更前-->
+    <div class="changearea">
+        <textarea name=key2 type="text" id="key2" placeholder="変更したいタイトル"></textarea>
+        <textarea id="change_memo" placeholder="変更メモ"></textarea>
+        <ul><li id="change_button">change(変更)</li></ul>
+    </div>
+    <!-- ----------以上内容変更エリア---------- -->
+
+    <!-- ----------以下音声入力-------------- -->
+    <div class="onseiarea">
+        <div class="onseiarea2">
+            <button id="start_btn">音声入力スタート</button>
+            <button id="stop_btn">音声入力ストップ</button>
+            <select name="select" id="select">
+                <option disabled selected value>対象部分を選んでください</option>
+                <option value="key">タイトル</option>
+                <option value="memo">メモ</option>
+                <option value="delete_memo">消去したいタイトル</option>
+                <option value="key2">変更したいタイトル</option>
+                <option value="change_memo">変更メモ</option>
+            </select>
+        </div>
+    </div>
+    <!-- ----------以上音声入力-------------- -->
+
+     <!-- -------------以下、キャンバス--------------- -->
+     <div class="canvasbox"> 
+      <canvas id="drowarea" width="800" height="300" style="border:4px double black;"></canvas>
+     </div>
+     
+     <nav class="canvas_btn">
+      <!-- 線の色を変更するHTML要素 -->
+      <input type="color" id="color" value="color">
+      <button id="clear_btn">clear</button>
+      <button id="save_btn">save</button>
+      <button id="recover_btn">recover</button>
+    </nav>
+     <!-- -------------以上、キャンバス--------------- -->
+
+</main>
+
+
+<table id="list">
+<!-- ここに追加データが挿入される -->
+<!-- <tr><th><td><img src="./hitokage.png" alt=""></td></th></tr> -->
+</table>
+
+
+
+<script>
+//----------------------ここからメモ機能---------------------------
+
+//1.Save クリックイベント
+$("#save").on("click",function(){
+    const key = $("#key").val();
+    const memo = $("#memo").val();
+    localStorage.setItem(key,memo);
+    const html = '<tr class='+key+'><th>'+key+'</th><td>'+memo+'</td></tr>'
+    $("#list").append(html);
+});
+
+//2.clear クリックイベント
+$("#clear").on("click",function(){
+    localStorage.clear();
+    $("#list").empty();
+});
+
+//3.ページ読み込み：保存データ取得表示
+for(let i=0; i<localStorage.length; i++){
+    const key   = localStorage.key(i);
+    const memo = localStorage.getItem(key);
+    const html = '<tr class='+key+'><th>'+key+'</th><td>'+memo+'</td></tr>'
+    if(key != "picture"){
+     $("#list").append(html);
+     }else{
+     const pic = localStorage.getItem("picture");
+     //console.log(pic);     //確認用 ここで画像ファイルを文字列にしたやつを取り出している
+     const html2 ='<tr class='+key+'><th>'+key+'</th><td><img src="'+pic+'" alt=""></td></tr>'
+     $("#list").append(html2);
+    }
+  }
+
+//4.一行消去
+$("#delete_button").on("click", function () { //id名＝delete_buttonを押すと着火
+  const targetName = $("#delete_memo").val(); //id名＝delete_memoに入力されたvalueを変数＝targetNameにいれる
+  localStorage.removeItem(targetName); //裏側はここで消去されている
+  $("."+targetName).remove();    //class名＝.targetNameをここで消去
+});
+
+//5.変更
+$("#change_button").on("click", function () {
+  const key2 = $("#key2").val();
+  const changeName = $("#change_memo").val();
+  localStorage.setItem(key2,changeName);//裏はここで変更されている
+  document.location.reload();//リロードすることで表も変更される
+  
+});
+
+//6.画像のsaveボタン押したときのリロード
+$("#save_btn").on("click", function () {
+  document.location.reload();//リロードすることで表も変更される 
+});
+
+
+//----------------------ここまでメモ機能---------------------------
+
+//----------------------ここから音声認識---------------------------
+$('[name=select]').change(function() {  //ここ改良の余地あり
+
+const startBtn = document.querySelector('#start_btn');
+const stopBtn = document.querySelector('#stop_btn');
+
+const selectName = $("[name=select]").val();
+//console.log('#'+selectName);
+const resultDiv = document.querySelector('#'+selectName);
+   
+ //ここを変更すれば音声入力先は変わる。けど、inputタグだとうまく動作しない.'input[name属性名]'で指定はできるはず
+
+  SpeechRecognition = webkitSpeechRecognition || SpeechRecognition; //ここでchromeとfirefoxの両方に対応させている
+  let recognition = new SpeechRecognition(); //SpeechRecognitionオブジェクトのインスタンス（コピー）を作成している
+
+  recognition.lang = 'ja-JP'; //言語を指定する。アメリカ英語なら「en-US」、イギリス英語なら「en-GB」。
+  recognition.interimResults = true; //これが認識している途中で暫定の認識結果を得ることができる。デフォルトは発言が終わった時に結果を取得する。
+  recognition.continuous = true; //これで発言が終わっても1分くらいは認識し続ける。デフォルトでは、発言が終わったタイミングで自動的に認識は終わる。
+
+  let finalTranscript = ''; // 確定した(黒の)認識結果
+
+  recognition.onresult = (event) => {
+    let interimTranscript = ''; // 暫定(灰色)の認識結果
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      let transcript = event.results[i][0].transcript;
+      if (event.results[i].isFinal) {
+        finalTranscript += transcript;
+      } else {
+        interimTranscript = transcript;
+      }
+    }
+    resultDiv.innerHTML = finalTranscript + interimTranscript; //ここで変数「resultDiv」にHTMLを代入
+
+  }
+
+  startBtn.onclick = () => {
+    recognition.start();
+  } //スタートボタンで認識スタート
+  stopBtn.onclick = () => {
+    recognition.stop();
+  }//終了ボタン
+});
+
+//----------------------ここまで音声認識---------------------------
+
+//----------------------ここからキャンバス---------------------------
+      //-----------------------------------以下、キャンバス色変えないパターン------------------------------------------------
+        //初期化(変数letで宣言)
+        let canvas_mouse_event = false; //スイッチ [ true=線を引く, false=線は引かない ]  ＊＊＊
+        let oldX = 0; //１つ前の座標（スタート地点）を代入するための変数
+        let oldY = 0; //１つ前の座標（スタート地点）を代入するための変数
+        let bold_line = 8; //線の太さをここで指定
+        let color = "#000000";
+
+        //キャンバスのおまじない
+        const can = $("#drowarea")[0]; //HTMLのCanvasを変数canに代入
+        const ctx = can.getContext("2d")//テンプレの言葉、平面を表す。
+
+        //mousedown：フラグをTrue→マウスダウン時の線引く合図
+        $(can).on("mousedown",function(e){  //変数「can」（＝HTMLのCanvas部分、上で宣言してたやつ）において、マウスダウンが発生した時に発火。function（e）で、イベントが起きたときの情報（座標とか）を引数としてうけることができる
+            oldX = e.offsetX;  //MOUSEDOWNしたY高さ座標取得（offsetはキャンバス内での座標）
+            oldY = e.offsetY;  //MOUSEDOWNしたX横座標取得（offsetはキャンバス内での座標）
+            canvas_mouse_event=true;  //マウスダウンをすることに、これをtrueにして、線を引けるようになった。上で変数宣言してる。
+        });
+
+        //mousemove：フラグがTrueだったら描く ※e：イベント引数取得
+        $(can).on("mousemove",function(e){          
+        if(canvas_mouse_event == true){    //"mousemove"だけだと無限に作動する。ので、canvas_mouse_event==trueにすることで、マウスダウンした時だけに、情報を限定する。
+            const px = e.offsetX;  //動いた先での座標
+            const py = e.offsetY;
+            ctx.strokeStyle = color; //色
+            ctx.lineWidth = bold_line; //太さ
+            ctx.beginPath(); //初期化
+            ctx.lineJoin= "round";  //これで太くしてもギザギザならない
+            ctx.lineCap = "round";  //これで太くもギザギザならない
+            ctx.moveTo(oldX, oldY); //開始地点
+            ctx.lineTo(px, py);  //動いた先での地点
+            ctx.stroke(); //かき始める
+            oldX = px; //動いた後に開始地点を入れ替える
+            oldY = py; //動いた後に開始地点を入れ替える  
+                }
+            });
+
+        //mouseup：フラグをfalse→マウスアップ時に線を引かない合図
+        $(can).on("mouseup",function(){  
+            canvas_mouse_event = false;  //mouseupで線を書けなくする
+        });
+
+        //mouseout：フラグをfalse→マウスアウト時に線を引かない合図
+        $(can).on("mouseout",function(){  
+            canvas_mouse_event = false;  //mouseupで線を書けなくする
+        });
+
+        //#clear_btn：クリアーボタンAction
+        $("#clear_btn").on("click",function(){
+          ctx.beginPath();  //初期化
+          ctx.clearRect(0, 0, can.width, can.height);  //（）の領域を消去する。canはキャンバス。widthに数字入れれば、キャンバスの範囲決めれるが、数字を入れない方が汎用性高い。
+        });
+
+        //ローカルストレージへの保存
+        $("#save_btn").on("click",function(){
+            var base64 = can.toDataURL();  //変数「can」の画像データをバイナリデータからbase64の文字列データに変換
+            //console.log(base64); 確認用
+            localStorage.setItem("picture", base64);//画像データをローカルストレージに保存  
+        });
+
+        //ローカルストレージへ保存した画像の復元
+        $("#recover_btn").on("click",function(){
+        var base64 = localStorage.getItem("picture");   // LocalStroageからデータを取得する
+        //console.log(base64); //確認用
+
+        var image = new Image();　// この三行でImageオブジェクトを作成し、src属性にデータを設定する
+        image.src = base64;
+        image.onload = function(){
+
+        
+        ctx.drawImage(image, 0, 0); // 画像の読み込みが終わったら、Canvasに画像を反映する。ここ変数「can」じゃなくて、変数「ctx」を指定する！
+        }
+        });
+
+      //-----------------------------------以上、キャンバス色変えないパターン------------------------------------------------
+      //-----------------------------------以下、キャンバス色変えるとき------------------------------------------------ 
+        $("#color").on("blur",function(){  //blurイベントは「要素がフォーカスを失った時」  colorのローカル変数対策で二つに場合わけしてる
+          //以下は「キャンバス色変えないパターン」と同じ
+            //初期化(変数letで宣言)
+            let canvas_mouse_event = false; //スイッチ [ true=線を引く, false=線は引かない ]  ＊＊＊
+            let oldX = 0; //１つ前の座標（スタート地点）を代入するための変数
+            let oldY = 0; //１つ前の座標（スタート地点）を代入するための変数
+            let bold_line = 10; //線の太さをここで指定
+            let color = $('#color').val(); 
+            //console.log(color);  //お試し用    
+
+            //キャンバスのおまじない
+            const can = $("#drowarea")[0]; //HTMLのCanvasを変数canに代入
+            const ctx = can.getContext("2d")//テンプレの言葉、平面を表す。
+
+            //mousedown：フラグをTrue→マウスダウン時の線引く合図
+            $(can).on("mousedown",function(e){  //変数「can」（＝HTMLのCanvas部分、上で宣言してたやつ）において、マウスダウンが発生した時に発火。function（e）で、イベントが起きたときの情報（座標とか）を引数としてうけることができる
+                oldX = e.offsetX;  //MOUSEDOWNしたY高さ座標取得（offsetはキャンバス内での座標）
+                oldY = e.offsetY;  //MOUSEDOWNしたX横座標取得（offsetはキャンバス内での座標）
+                canvas_mouse_event=true;  //マウスダウンをすることに、これをtrueにして、線を引けるようになった。上で変数宣言してる。
+            });
+
+            //mousemove：フラグがTrueだったら描く ※e：イベント引数取得
+            $(can).on("mousemove",function(e){          
+            if(canvas_mouse_event == true){    //"mousemove"だけだと無限に作動する。ので、canvas_mouse_event==trueにすることで、マウスダウンした時だけに、情報を限定する。
+                const px = e.offsetX;  //動いた先での座標
+                const py = e.offsetY;
+                ctx.strokeStyle = color; //色
+                ctx.lineWidth = bold_line; //太さ
+                ctx.beginPath(); //初期化
+                ctx.lineJoin= "round";  //これで太くしてもギザギザならない
+                ctx.lineCap = "round";  //これで太くもギザギザならない
+                ctx.moveTo(oldX, oldY); //開始地点
+                ctx.lineTo(px, py);  //動いた先での地点
+                ctx.stroke(); //かき始める
+                oldX = px; //動いた後に開始地点を入れ替える
+                oldY = py; //動いた後に開始地点を入れ替える  
+                    }
+                });
+
+            //mouseup：フラグをfalse→マウスアップ時に線を引かない合図
+            $(can).on("mouseup",function(){  
+                canvas_mouse_event = false;  //mouseupで線を書けなくする
+            });
+
+            //mouseout：フラグをfalse→マウスアウト時に線を引かない合図
+            $(can).on("mouseout",function(){  
+            canvas_mouse_event = false;  //mouseupで線を書けなくする
+            });
+
+            //#clear_btn：クリアーボタンAction
+            $("#clear_btn").on("click",function(){
+            ctx.beginPath();  //初期化
+            ctx.clearRect(0, 0, can.width, can.height);  //（）の領域を消去する。canはキャンバス。widthに数字入れれば、キャンバスの範囲決めれるが、数字を入れない方が汎用性高い。
+            });
+
+                //ローカルストレージへの保存
+            $("#save_btn").on("click",function(){
+            var base64 = can.toDataURL();  //変数「can」の画像データをバイナリデータからbase64の文字列データに変換
+            //console.log(base64); 確認用
+            localStorage.setItem("picture", base64);//画像データをローカルストレージに保存  
+            });
+
+              //ローカルストレージへ保存した画像の復元
+            $("#recover_btn").on("click",function(){
+            var base64 = localStorage.getItem("picture");   // LocalStroageからデータを取得する
+
+            var image = new Image();　// この三行でImageオブジェクトを作成し、src属性にデータを設定する
+            image.src = base64;
+            image.onload = function(){
+
+        
+            ctx.drawImage(image, 0, 0); // 画像の読み込みが終わったら、Canvasに画像を反映する。ここ変数「can」じゃなくて、変数「ctx」を指定する！
+            }
+            });
+          //以上は「キャンバス色変えないパターン」と同じ
+         });
+//----------------------ここまでキャンバス-------------------------＝
+
+
+</script>
+<footer><small>G's</small></footer>
+</body>
+</html>
