@@ -15,8 +15,11 @@ https://tealimpala23.sakura.ne.jp/memo_NIWA_24/index.html
 html、css、jquery、javascript、音声認識API
 
 ## 工夫した点
+
 ・音声認識APIを使用したこと
+
 ・canvasを使用したこと
+
 ・canvasで描いた絵を、ローカルストレージに保存し、ブラウザ上で表示させたこと
 
 
