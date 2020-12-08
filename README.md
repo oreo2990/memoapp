@@ -1,6 +1,8 @@
 # メモパッドを作成しました（制作期間1.5日）。
 
+
 ローカルストレージを使用した、メモパッドアプリを作成しました。
+
 https://tealimpala23.sakura.ne.jp/memo_NIWA_24/index.html
 
 
